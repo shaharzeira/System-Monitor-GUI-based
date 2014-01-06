@@ -7,7 +7,6 @@ from matplotlib import animation
 import time 
 import threading
 
-guiWorking = True
 xRange = range(LEN_Y_CHART)
 GuiCpuDataArray = [0] * LEN_Y_CHART
 GuiMemoryDataArray = [0] * LEN_Y_CHART
