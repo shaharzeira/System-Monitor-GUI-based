@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from memorySysViewModel import *
+from SysViewModel import *
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import animation
