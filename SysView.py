@@ -4,8 +4,7 @@ from memorySysViewModel import *
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import animation
-import time 
-import threading
+import time
 
 xRange = range(LEN_Y_CHART)
 GuiCpuDataArray = [0] * LEN_Y_CHART
