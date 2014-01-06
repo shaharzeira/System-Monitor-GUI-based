@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from memorySysModel import *
+from SysModel import *
 
 LEN_Y_CHART = 61
 cpuDataArray = []
