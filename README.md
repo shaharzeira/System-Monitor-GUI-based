@@ -1,7 +1,7 @@
 System Monitor GUI-based
 ========================
 
-System Monitor for Linux written in Python
+System Monitor GUI-based for Linux written in Python
 
 Install
 1. Install sysstat
