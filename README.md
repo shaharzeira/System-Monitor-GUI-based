@@ -1,5 +1,5 @@
-System-Monitor
-==============
+System Monitor GUI-based
+========================
 
 System Monitor for Linux written in Python
 
