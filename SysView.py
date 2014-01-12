@@ -25,6 +25,8 @@ import time
 xRange = range(LEN_Y_CHART)
 GuiCpuDataArray = [0] * LEN_Y_CHART
 GuiMemoryDataArray = [0] * LEN_Y_CHART
+isLock=False
+lockTime=0.9
 
 # First set up the figure, the axis, and the plot element we want to animate
 fig = plt.figure()
@@ -36,7 +38,11 @@ ax.set_xlabel("Cpu %")
 line, = ax.plot([], [], lw=5)
 detailsCpusLines = []
 
-updateLastSysDict()
+thread.start_new_thread(updateSysDictListMainThread, ())
+time.sleep(1.3)
+while updateLastSysDict() == False:
+    time.sleep(0.1)
+
 updateRecentCpuDataArray()
 GuiCpusDetailsDataArray = [[]] * lastSysDict[CPUS]
 for i in range(lastSysDict[CPUS]):
@@ -67,45 +73,59 @@ def init():
 
 # animation function.  This is called sequentially
 def animate(i):
-    updateGuiCpuDataArray()
-    line.set_data(xRange, GuiCpuDataArray)
-    for j in range(lastSysDict[CPUS]):
-	detailsCpusLines[j].set_data(xRange, GuiCpusDetailsDataArray[j])
-    updateLastSysDict()
-    updateRecentCpuDataArray()
+    if not isLock:
+	a = GuiCpuDataArray[0:]
+	line.set_data(xRange, a)
+	for j in range(lastSysDict[CPUS]):
+	    b =GuiCpusDetailsDataArray[j][0:]
+	    detailsCpusLines[j].set_data(xRange, b)
     return detailsCpusLinesTup
 
 
 # First set up the figure, the axis, and the plot element we want to animate
-ax2 = plt.subplot(212)
-ax2.set_xlim((0, LEN_Y_CHART - 1))
-ax2.set_ylim((0, 100))
+axMemory = plt.subplot(212)
+axMemory.set_xlim((0, LEN_Y_CHART - 1))
+axMemory.set_ylim((0, 100))
 updateLastSysDictMemory()
 updateRecentMemoryDataArray()
-ax2.set_xlabel("Memory % of total [" + str(lastSysDict[TOTAL_MEMORY]) + "]")
-line2, = ax2.plot([], [], lw=2)
+axMemory.set_xlabel("Memory % of total [" + str(lastSysDict[TOTAL_MEMORY]) + "]")
+lineMemory, = axMemory.plot([], [], lw=2)
 
 # initialization function: plot the background of each frame
-def init2():
-    time.sleep(1)
-    line2.set_data([], [])
-    return line2,
+def initMemory():
+    lineMemory.set_data([], [])
+    return lineMemory,
 
 # animation function.  This is called sequentially
-def animate2(i):
-    #time.sleep(0.1)
-    updateGuiMemoryDataArray()
-    line2.set_data(xRange, GuiMemoryDataArray)
-    updateLastSysDictMemory()
-    updateRecentMemoryDataArray()
-    return line2,
+def animateMemory(i):
+    if not isLock:
+	a = GuiMemoryDataArray[0:]
+	lineMemory.set_data(xRange, a)
+    return lineMemory,
+
+def updateLineData():
+    while True:
+	isLock=True
+	updateGuiMemoryDataArray()
+	updateLastSysDictMemory()
+	updateRecentMemoryDataArray()
+
+	updateGuiCpuDataArray()
+	updateLastSysDict()
+	updateRecentCpuDataArray()
+	time.sleep(myInterval/980*(1-lockTime))
+	isLock=False
+	time.sleep(myInterval/980*lockTime)
 
 # call the animator.  blit=True means only re-draw the parts that have changed.
-anim2 = animation.FuncAnimation(fig, animate2, init_func=init2,
-                               frames=107, interval=1070, blit=True)
+# Animate Memory usage
+animMemory = animation.FuncAnimation(fig, animateMemory, init_func=initMemory,
+                               frames=40, interval=myInterval, blit=True)
 
-# call the animator.  blit=True means only re-draw the parts that have changed.
+# Animate Cpu usage
 anim = animation.FuncAnimation(fig, animate, init_func=init,
-                               frames=107, interval=1070, blit=True)
+                               frames=40, interval=myInterval, blit=True)
+
+thread.start_new_thread(updateLineData, ())
 
 plt.show()
