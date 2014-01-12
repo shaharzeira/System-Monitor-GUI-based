@@ -17,6 +17,8 @@ limitations under the License.
 '''
 
 import os
+import thread
+import time
 
 FREE_MEMORY = "freeMemory"
 USED_MEMORY = "usedMemory"
@@ -25,20 +27,26 @@ CPU = "cpu"
 CPUS = "cpus"
 CPUS_DETAILS = "cpus details"
 lastSysDict = {}
+lastSysDictList = []
 ALL_STRING_INDEX = 0
 CPU_STRING_INDEX = 0
 CPU_AND_CLOSER_STRING_INDEX = 0
+myInterval =910.0
 
 def updateLastSysDict():
-    cpuSysString = (os.popen("sar -P ALL 1 1").read()).split()
-    updateStringIndexes(cpuSysString)
-    lastSysDict[CPU] = float(cpuSysString[ALL_STRING_INDEX+1])
-    lastSysDict[CPUS] = int(cpuSysString[CPU_AND_CLOSER_STRING_INDEX-1][1])
+    if len(lastSysDictList) > 0:
+	cpuSysString = lastSysDictList[-1]
+	updateStringIndexes(cpuSysString)
+	lastSysDict[CPU] = float(cpuSysString[ALL_STRING_INDEX+1])
+	lastSysDict[CPUS] = int(cpuSysString[CPU_AND_CLOSER_STRING_INDEX-1][1])
     
-    cpusArray = []
-    lastSysDict[CPUS_DETAILS] = cpusArray
-    for i in range(lastSysDict[CPUS]):
-	cpusArray.append(cpuSysString[ALL_STRING_INDEX+1 + (i+1)*(ALL_STRING_INDEX-CPU_STRING_INDEX)])
+	cpusArray = []
+	lastSysDict[CPUS_DETAILS] = cpusArray
+	for i in range(lastSysDict[CPUS]):
+	    cpusArray.append(cpuSysString[ALL_STRING_INDEX+1 + (i+1)*(ALL_STRING_INDEX-CPU_STRING_INDEX)])
+	return True
+    else:
+	return False
 
 def updateStringIndexes(cpuSysString):
     global ALL_STRING_INDEX
@@ -47,10 +55,20 @@ def updateStringIndexes(cpuSysString):
     ALL_STRING_INDEX=cpuSysString.index("all")
     CPU_AND_CLOSER_STRING_INDEX=cpuSysString.index("CPU)")
     CPU_STRING_INDEX=cpuSysString.index("CPU")
-    lastSysDict[CPU] = float(cpuSysString[ALL_STRING_INDEX+1])
 
 def updateLastSysDictMemory():
     memorySysString = (os.popen("free -m").read()).split()
     lastSysDict[FREE_MEMORY] = float(memorySysString[16])
     lastSysDict[USED_MEMORY] = float(memorySysString[15])
     lastSysDict[TOTAL_MEMORY] = float(memorySysString[7])
+
+def updateLastSysDictList():
+    t =(os.popen("sar -P ALL 1 1").read()).split()
+    lastSysDictList.append(t)
+
+def updateSysDictListMainThread():
+    while True:
+	global lastSysDictList
+	lastSysDictList = lastSysDictList[-3:]
+	thread.start_new_thread(updateLastSysDictList, ())
+	time.sleep(myInterval/930)
