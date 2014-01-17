@@ -2,6 +2,7 @@ System Monitor GUI-based
 ========================
 
 System Monitor GUI-based for Linux written in Python
+Shows the cpu and ram usages in real time
 
 Install
 1. Install sysstat
