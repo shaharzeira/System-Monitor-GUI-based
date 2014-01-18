@@ -1,7 +1,7 @@
 System Monitor GUI-based
 ========================
 
-![](http://oi39.tinypic.com/2s97yvk.jpg)
+![](http://oi44.tinypic.com/281aqs1.jpg)
 
 System Monitor GUI-based for Linux written in Python
 Shows the cpu and memory usages in real time
