@@ -27,32 +27,15 @@ GuiCpuDataArray = [0] * LEN_Y_CHART
 GuiMemoryDataArray = [0] * LEN_Y_CHART
 isLock=False
 lockTime=0.9
-
-# First set up the figure, the axis, and the plot element we want to animate
-fig = plt.figure()
-fig.canvas.set_window_title('System Monitor') 
-ax = plt.subplot(211)
-ax.set_xlim((0, LEN_Y_CHART - 1))
-ax.set_ylim((0, 100))
-ax.set_xlabel("Cpu %")
-line, = ax.plot([], [], lw=5)
 detailsCpusLines = []
 
-thread.start_new_thread(updateSysDictListMainThread, ())
-time.sleep(1.3)
-while updateLastSysDict() == False:
-    time.sleep(0.1)
-
-updateRecentCpuDataArray()
-GuiCpusDetailsDataArray = [[]] * lastSysDict[CPUS]
-for i in range(lastSysDict[CPUS]):
-    GuiCpusDetailsDataArray[i] = [0] * LEN_Y_CHART
-
-for i in range(lastSysDict[CPUS]):
-    ln, = ax.plot([], [], lw=1)
-    detailsCpusLines.append(ln)
-detailsCpusLines.append(line)
-detailsCpusLinesTup=tuple(detailsCpusLines)
+def setLine(place, name):
+    ax = plt.subplot(place)
+    ax.set_xlim((0, LEN_Y_CHART - 1))
+    ax.set_ylim((0, 100))
+    ax.set_xlabel(name)
+    ax.set_xticks([]) 
+    return ax
 
 def updateGuiCpuDataArray():
     global GuiCpuDataArray
@@ -81,16 +64,6 @@ def animate(i):
 	    detailsCpusLines[j].set_data(xRange, b)
     return detailsCpusLinesTup
 
-
-# First set up the figure, the axis, and the plot element we want to animate
-axMemory = plt.subplot(212)
-axMemory.set_xlim((0, LEN_Y_CHART - 1))
-axMemory.set_ylim((0, 100))
-updateLastSysDictMemory()
-updateRecentMemoryDataArray()
-axMemory.set_xlabel("Memory % of total [" + str(lastSysDict[TOTAL_MEMORY]) + "]")
-lineMemory, = axMemory.plot([], [], lw=2)
-
 # initialization function: plot the background of each frame
 def initMemory():
     lineMemory.set_data([], [])
@@ -116,6 +89,36 @@ def updateLineData():
 	time.sleep(myInterval/980*(1-lockTime))
 	isLock=False
 	time.sleep(myInterval/980*lockTime)
+
+thread.start_new_thread(updateSysDictListMainThread, ())
+time.sleep(0.8)
+while updateLastSysDict() == False:
+    time.sleep(0.1)
+
+updateRecentCpuDataArray()
+GuiCpusDetailsDataArray = [[]] * lastSysDict[CPUS]
+
+for i in range(lastSysDict[CPUS]):
+    GuiCpusDetailsDataArray[i] = [0] * LEN_Y_CHART
+
+updateLastSysDictMemory()
+updateRecentMemoryDataArray()
+
+# First set up the figure, the axis, and the plot element we want to animate
+fig = plt.figure()
+fig.canvas.set_window_title('System Monitor') 
+
+ax = setLine(211, "Cpu %")
+line, = ax.plot([], [], lw=5)
+
+for i in range(lastSysDict[CPUS]):
+    ln, = ax.plot([], [], lw=1)
+    detailsCpusLines.append(ln)
+detailsCpusLines.append(line)
+detailsCpusLinesTup=tuple(detailsCpusLines)
+
+axMemory = setLine(212, "Memory % of total [" + str(lastSysDict[TOTAL_MEMORY]) + "]")
+lineMemory, = axMemory.plot([], [], lw=2)
 
 # call the animator.  blit=True means only re-draw the parts that have changed.
 # Animate Memory usage
