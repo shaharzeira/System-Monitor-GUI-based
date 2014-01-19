@@ -31,7 +31,7 @@ lastSysDictList = []
 ALL_STRING_INDEX = 0
 CPU_STRING_INDEX = 0
 CPU_AND_CLOSER_STRING_INDEX = 0
-myInterval =910.0
+myInterval =900.0
 
 def updateLastSysDict():
     if len(lastSysDictList) > 0:
