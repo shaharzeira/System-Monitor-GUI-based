@@ -20,21 +20,28 @@ from SysViewModel import *
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import animation
-import time
+from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+import math
+import threading
+
+majorFormatter = FormatStrFormatter('%d')
+minorLocatorY   = MultipleLocator(10)
 
 xRange = range(LEN_Y_CHART)
 GuiCpuDataArray = [0] * LEN_Y_CHART
 GuiMemoryDataArray = [0] * LEN_Y_CHART
-isLock=False
 lockTime=0.9
 detailsCpusLines = []
+lock = threading.Lock()
 
 def setLine(place, name):
     ax = plt.subplot(place)
     ax.set_xlim((0, LEN_Y_CHART - 1))
     ax.set_ylim((0, 100))
     ax.set_xlabel(name)
-    ax.set_xticks([]) 
+    ax.set_xticks([])
+    ax.yaxis.set_minor_locator(minorLocatorY)
+    ax.yaxis.set_minor_formatter(majorFormatter)
     return ax
 
 def updateGuiCpuDataArray():
@@ -47,6 +54,27 @@ def updateGuiMemoryDataArray():
     global GuiMemoryDataArray
     GuiMemoryDataArray[-(len(memoryDataArray)):] = memoryDataArray
 
+def adjust(a):
+    return [(6.0/7*x+math.sqrt(max(x,0))*10.0/7) for x in a]
+    #return a[0:]
+
+def lockFunc(key):
+    with lock:
+	if key == "updateLineData":
+	    updateGuiMemoryDataArray()
+	    updateLastSysDictMemory()
+	    updateRecentMemoryDataArray()
+
+	    updateGuiCpuDataArray()
+	    updateLastSysDict()
+	    updateRecentCpuDataArray()
+	if key == "animate":
+	    line.set_data(xRange, adjust(GuiCpuDataArray))
+	    for j in range(lastSysDict[CPUS]):
+		detailsCpusLines[j].set_data(xRange, adjust(GuiCpusDetailsDataArray[j]))
+	if key == "animateMemory":
+	    lineMemory.set_data(xRange, adjust(GuiMemoryDataArray))
+
 # initialization function: plot the background of each frame
 def init():
     line.set_data([], [])
@@ -56,12 +84,7 @@ def init():
 
 # animation function.  This is called sequentially
 def animate(i):
-    if not isLock:
-	a = GuiCpuDataArray[0:]
-	line.set_data(xRange, a)
-	for j in range(lastSysDict[CPUS]):
-	    b =GuiCpusDetailsDataArray[j][0:]
-	    detailsCpusLines[j].set_data(xRange, b)
+    lockFunc("animate")
     return detailsCpusLinesTup
 
 # initialization function: plot the background of each frame
@@ -71,24 +94,13 @@ def initMemory():
 
 # animation function.  This is called sequentially
 def animateMemory(i):
-    if not isLock:
-	a = GuiMemoryDataArray[0:]
-	lineMemory.set_data(xRange, a)
+    lockFunc("animateMemory")
     return lineMemory,
 
 def updateLineData():
     while True:
-	isLock=True
-	updateGuiMemoryDataArray()
-	updateLastSysDictMemory()
-	updateRecentMemoryDataArray()
-
-	updateGuiCpuDataArray()
-	updateLastSysDict()
-	updateRecentCpuDataArray()
-	time.sleep(myInterval/980*(1-lockTime))
-	isLock=False
-	time.sleep(myInterval/980*lockTime)
+	lockFunc("updateLineData")
+	time.sleep(myInterval/970)
 
 thread.start_new_thread(updateSysDictListMainThread, ())
 time.sleep(0.8)
