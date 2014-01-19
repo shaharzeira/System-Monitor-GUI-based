@@ -33,7 +33,7 @@ def updateCpuDataArray(d):
     for i in range(lastSysDict[CPUS]):
 	if len(cpusDataArray) < lastSysDict[CPUS]:
 	    cpusDataArray.append([])
-	cpusDataArray[i].append(d.get(CPUS_DETAILS)[i])
+	cpusDataArray[i].append(float(d.get(CPUS_DETAILS)[i]))
 	if len(cpusDataArray[i]) > LEN_Y_CHART:
 	    cpusDataArray[i].pop(0)
 
