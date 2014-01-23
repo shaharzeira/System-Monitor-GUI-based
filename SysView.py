@@ -23,6 +23,7 @@ from matplotlib import animation
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 import math
 import threading
+import gobject
 
 majorFormatter = FormatStrFormatter('%d')
 minorLocatorY   = MultipleLocator(10)
@@ -61,6 +62,10 @@ def adjust(a):
 def lockFunc(key):
     with lock:
 	if key == "updateLineData":
+	    global lastSysDictList
+	    lastSysDictList = lastSysDictList[-3:]
+	    thread.start_new_thread(updateLastSysDictList, ())
+
 	    updateGuiMemoryDataArray()
 	    updateLastSysDictMemory()
 	    updateRecentMemoryDataArray()
@@ -98,21 +103,19 @@ def animateMemory(i):
     return lineMemory,
 
 def updateLineData():
-    while True:
-	lockFunc("updateLineData")
-	time.sleep(myInterval/970)
+    lockFunc("updateLineData")
+    time.sleep(myInterval/1000/2)
+    return True
 
-thread.start_new_thread(updateSysDictListMainThread, ())
+updateLastSysDictList()
 time.sleep(0.8)
 while updateLastSysDict() == False:
     time.sleep(0.1)
-
 updateRecentCpuDataArray()
 GuiCpusDetailsDataArray = [[]] * lastSysDict[CPUS]
 
 for i in range(lastSysDict[CPUS]):
     GuiCpusDetailsDataArray[i] = [0] * LEN_Y_CHART
-
 updateLastSysDictMemory()
 updateRecentMemoryDataArray()
 
@@ -141,6 +144,5 @@ animMemory = animation.FuncAnimation(fig, animateMemory, init_func=initMemory,
 anim = animation.FuncAnimation(fig, animate, init_func=init,
                                frames=40, interval=myInterval, blit=True)
 
-thread.start_new_thread(updateLineData, ())
-
+gobject.idle_add(updateLineData)
 plt.show()
