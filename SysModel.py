@@ -31,7 +31,7 @@ lastSysDictList = []
 ALL_STRING_INDEX = 0
 CPU_STRING_INDEX = 0
 CPU_AND_CLOSER_STRING_INDEX = 0
-myInterval =840.0
+myInterval =840.0*2
 
 def updateLastSysDict():
     if len(lastSysDictList) > 0:
@@ -65,10 +65,4 @@ def updateLastSysDictMemory():
 def updateLastSysDictList():
     t =(os.popen("sar -P ALL 1 1").read()).split()
     lastSysDictList.append(t)
-
-def updateSysDictListMainThread():
-    while True:
-	global lastSysDictList
-	lastSysDictList = lastSysDictList[-3:]
-	thread.start_new_thread(updateLastSysDictList, ())
-	time.sleep(myInterval/930)
+    return False
