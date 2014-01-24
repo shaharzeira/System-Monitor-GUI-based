@@ -18,7 +18,7 @@ limitations under the License.
 
 from SysModel import *
 
-LEN_Y_CHART = 61
+LEN_Y_CHART = 81
 cpuDataArray = []
 memoryDataArray = []
 cpusDataArray = []
