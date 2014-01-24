@@ -16,31 +16,53 @@ See the License for the specific language governing permissions and
 limitations under the License.
 '''
 
-from SysModel import *
+import os
+import thread
+import time
 
-LEN_Y_CHART = 81
-cpuDataArray = []
-memoryDataArray = []
-cpusDataArray = []
+FREE_MEMORY = "freeMemory"
+USED_MEMORY = "usedMemory"
+TOTAL_MEMORY = "totalMemory"
+CPU = "cpu"
+CPUS = "cpus"
+CPUS_DETAILS = "cpus details"
+lastSysDict = {}
+lastSysDictList = []
+ALL_STRING_INDEX = 0
+CPU_STRING_INDEX = 0
+CPU_AND_CLOSER_STRING_INDEX = 0
+myInterval =1640.0
 
-def updateRecentCpuDataArray():
-    updateCpuDataArray(lastSysDict)
+def updateLastSysDict():
+    if len(lastSysDictList) > 0:
+	cpuSysString = lastSysDictList[-1]
+	updateStringIndexes(cpuSysString)
+	lastSysDict[CPU] = float(cpuSysString[ALL_STRING_INDEX+1])
+	lastSysDict[CPUS] = int(cpuSysString[CPU_AND_CLOSER_STRING_INDEX-1][1])
+    
+	cpusArray = []
+	lastSysDict[CPUS_DETAILS] = cpusArray
+	for i in range(lastSysDict[CPUS]):
+	    cpusArray.append(cpuSysString[ALL_STRING_INDEX+1 + (i+1)*(ALL_STRING_INDEX-CPU_STRING_INDEX)])
+	return True
+    else:
+	return False
 
-def updateCpuDataArray(d):
-    cpuDataArray.append(d.get(CPU))
-    if len(cpuDataArray) > LEN_Y_CHART:
-	cpuDataArray.pop(0)
-    for i in range(lastSysDict[CPUS]):
-	if len(cpusDataArray) < lastSysDict[CPUS]:
-	    cpusDataArray.append([])
-	cpusDataArray[i].append(float(d.get(CPUS_DETAILS)[i]))
-	if len(cpusDataArray[i]) > LEN_Y_CHART:
-	    cpusDataArray[i].pop(0)
+def updateStringIndexes(cpuSysString):
+    global ALL_STRING_INDEX
+    global CPU_STRING_INDEX
+    global CPU_AND_CLOSER_STRING_INDEX
+    ALL_STRING_INDEX=cpuSysString.index("all")
+    CPU_AND_CLOSER_STRING_INDEX=cpuSysString.index("CPU)")
+    CPU_STRING_INDEX=cpuSysString.index("CPU")
 
-def updateRecentMemoryDataArray():
-    updateMemoryDataArray(lastSysDict)
+def updateLastSysDictMemory():
+    memorySysString = (os.popen("free -m").read()).split()
+    lastSysDict[FREE_MEMORY] = float(memorySysString[16])
+    lastSysDict[USED_MEMORY] = float(memorySysString[15])
+    lastSysDict[TOTAL_MEMORY] = float(memorySysString[7])
 
-def updateMemoryDataArray(d):
-    memoryDataArray.append(d.get(USED_MEMORY) / d.get(TOTAL_MEMORY) * 100)
-    if len(memoryDataArray) > LEN_Y_CHART:
-	memoryDataArray.pop(0)
+def updateLastSysDictList():
+    t =(os.popen("sar -P ALL 1 1").read()).split()
+    lastSysDictList.append(t)
+    return False
