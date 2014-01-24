@@ -25,13 +25,16 @@ import math
 import threading
 import gobject
 
+CopyGuiDataCpu="CopyGuiDataCpu"
+CopyGuiDataMemory="CopyGuiDataMemory"
+ChangeGuiData="ChangeGuiData"
+
 majorFormatter = FormatStrFormatter('%d')
 minorLocatorY   = MultipleLocator(10)
 
 xRange = range(LEN_Y_CHART)
 GuiCpuDataArray = [0] * LEN_Y_CHART
 GuiMemoryDataArray = [0] * LEN_Y_CHART
-lockTime=0.9
 detailsCpusLines = []
 lock = threading.Lock()
 
@@ -55,30 +58,20 @@ def updateGuiMemoryDataArray():
     global GuiMemoryDataArray
     GuiMemoryDataArray[-(len(memoryDataArray)):] = memoryDataArray
 
-def adjust(a):
-    return [(6.0/7*x+math.sqrt(max(x,0))*10.0/7) for x in a]
-    #return a[0:]
+def adjustNoCopy(a):
+    for x in a:
+	x=(6.0/7*x+math.sqrt(max(x,0))*10.0/7)
 
-def lockFunc(key):
+def changeGuiData(key):
     with lock:
-	if key == "updateLineData":
-	    global lastSysDictList
-	    lastSysDictList = lastSysDictList[-3:]
-	    thread.start_new_thread(updateLastSysDictList, ())
-
+	if key==CopyGuiDataCpu:
+	    return [GuiCpuDataArray[0:],
+		    [GuiCpusDetailsDataArray[j][0:] for j in range(lastSysDict[CPUS])]]
+	if key==CopyGuiDataMemory:
+	    return GuiMemoryDataArray[0:]
+	if key==ChangeGuiData:
 	    updateGuiMemoryDataArray()
-	    updateLastSysDictMemory()
-	    updateRecentMemoryDataArray()
-
 	    updateGuiCpuDataArray()
-	    updateLastSysDict()
-	    updateRecentCpuDataArray()
-	if key == "animate":
-	    line.set_data(xRange, adjust(GuiCpuDataArray))
-	    for j in range(lastSysDict[CPUS]):
-		detailsCpusLines[j].set_data(xRange, adjust(GuiCpusDetailsDataArray[j]))
-	if key == "animateMemory":
-	    lineMemory.set_data(xRange, adjust(GuiMemoryDataArray))
 
 # initialization function: plot the background of each frame
 def init():
@@ -89,7 +82,12 @@ def init():
 
 # animation function.  This is called sequentially
 def animate(i):
-    lockFunc("animate")
+    t=changeGuiData(CopyGuiDataCpu)
+    adjustNoCopy(t[0])
+    line.set_data(xRange, t[0])
+    for j in range(lastSysDict[CPUS]):
+	adjustNoCopy(t[1][j])
+	detailsCpusLines[j].set_data(xRange, t[1][j])
     return detailsCpusLinesTup
 
 # initialization function: plot the background of each frame
@@ -99,16 +97,36 @@ def initMemory():
 
 # animation function.  This is called sequentially
 def animateMemory(i):
-    lockFunc("animateMemory")
+    t=changeGuiData(CopyGuiDataMemory)
+    adjustNoCopy(t)
+    lineMemory.set_data(xRange, t)
     return lineMemory,
 
-def updateLineData():
-    lockFunc("updateLineData")
-    time.sleep(myInterval/1000/2)
+wasThreaded=False
+def updateLineDataGobject():
+    global wasThreaded
+    if not wasThreaded:
+	thread.start_new_thread(updateLineDataThread,())
+    time.sleep(myInterval/1000)
     return True
 
+def updateLineDataThread():
+    global wasThreaded
+    wasThreaded=True
+    while True:
+	global lastSysDictList
+	lastSysDictList = lastSysDictList[-3:]
+	thread.start_new_thread(updateLastSysDictList, ())
+
+	changeGuiData(ChangeGuiData)
+	updateLastSysDictMemory()
+	updateRecentMemoryDataArray()
+
+	updateLastSysDict()
+	updateRecentCpuDataArray()
+	time.sleep(myInterval/1000/2)
+
 updateLastSysDictList()
-time.sleep(0.8)
 while updateLastSysDict() == False:
     time.sleep(0.1)
 updateRecentCpuDataArray()
@@ -144,5 +162,5 @@ animMemory = animation.FuncAnimation(fig, animateMemory, init_func=initMemory,
 anim = animation.FuncAnimation(fig, animate, init_func=init,
                                frames=40, interval=myInterval, blit=True)
 
-gobject.idle_add(updateLineData)
+gobject.idle_add(updateLineDataGobject)
 plt.show()
