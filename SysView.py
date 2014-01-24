@@ -24,6 +24,8 @@ from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 import math
 import threading
 import gobject
+import thread
+import time
 
 CopyGuiDataCpu="CopyGuiDataCpu"
 CopyGuiDataMemory="CopyGuiDataMemory"
