@@ -17,8 +17,6 @@ limitations under the License.
 '''
 
 import os
-import thread
-import time
 
 FREE_MEMORY = "freeMemory"
 USED_MEMORY = "usedMemory"
