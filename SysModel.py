@@ -17,6 +17,7 @@ limitations under the License.
 '''
 
 import os
+from collections import deque
 
 FREE_MEMORY = "freeMemory"
 USED_MEMORY = "usedMemory"
@@ -25,26 +26,40 @@ CPU = "cpu"
 CPUS = "cpus"
 CPUS_DETAILS = "cpus details"
 lastSysDict = {}
-lastSysDictList = []
+lastSysDictList = deque(maxlen=3)
 ALL_STRING_INDEX = 0
 CPU_STRING_INDEX = 0
 CPU_AND_CLOSER_STRING_INDEX = 0
-myInterval =1640.0
+myInterval =1640.0/20
+rangeCpus=[]
+wasInit=False
 
 def updateLastSysDict():
     if len(lastSysDictList) > 0:
 	cpuSysString = lastSysDictList[-1]
-	updateStringIndexes(cpuSysString)
+	if not wasInit:
+	    updateStringIndexes(cpuSysString)
 	lastSysDict[CPU] = float(cpuSysString[ALL_STRING_INDEX+1])
 	lastSysDict[CPUS] = int(cpuSysString[CPU_AND_CLOSER_STRING_INDEX-1][1])
-    
-	cpusArray = []
-	lastSysDict[CPUS_DETAILS] = cpusArray
-	for i in range(lastSysDict[CPUS]):
-	    cpusArray.append(cpuSysString[ALL_STRING_INDEX+1 + (i+1)*(ALL_STRING_INDEX-CPU_STRING_INDEX)])
+	
+	initRangeCpus()
+
+	if not (CPUS_DETAILS in lastSysDict):
+	    lastSysDict[CPUS_DETAILS] = [float(cpuSysString[ALL_STRING_INDEX+1 + (i+1)*(ALL_STRING_INDEX-CPU_STRING_INDEX)]) 					     for i in rangeCpus]
+	else:
+	    for i in rangeCpus:
+		lastSysDict[CPUS_DETAILS][i]=float(cpuSysString[ALL_STRING_INDEX+1 + (i+1)*(ALL_STRING_INDEX-CPU_STRING_INDEX)])
+
 	return True
     else:
 	return False
+
+def initRangeCpus():
+    global rangeCpus
+    if (len(rangeCpus)==0):
+	wasInit=True
+	for i in range(lastSysDict[CPUS]):
+	    rangeCpus.append(i)
 
 def updateStringIndexes(cpuSysString):
     global ALL_STRING_INDEX
@@ -55,12 +70,15 @@ def updateStringIndexes(cpuSysString):
     CPU_STRING_INDEX=cpuSysString.index("CPU")
 
 def updateLastSysDictMemory():
-    memorySysString = (os.popen("free -m").read()).split()
+    memorySysString = withPopen("free -m")
     lastSysDict[FREE_MEMORY] = float(memorySysString[16])
     lastSysDict[USED_MEMORY] = float(memorySysString[15])
     lastSysDict[TOTAL_MEMORY] = float(memorySysString[7])
 
 def updateLastSysDictList():
-    t =(os.popen("sar -P ALL 1 1").read()).split()
-    lastSysDictList.append(t)
-    return False
+    lastSysDictList.append(withPopen("sar -P ALL 1 1"))
+
+def withPopen(s):
+    with os.popen(s) as rlt:
+	t= rlt.read().split()
+    return t
