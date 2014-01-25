@@ -18,29 +18,33 @@ limitations under the License.
 
 from SysModel import *
 
-LEN_Y_CHART = 81
-cpuDataArray = []
-memoryDataArray = []
+LEN_Y_CHART = 80*20+1
+rangeYChart=range(LEN_Y_CHART)
+cpuDataArray = deque([0] * LEN_Y_CHART, maxlen=LEN_Y_CHART)
+memoryDataArray = deque([0] * LEN_Y_CHART,maxlen=LEN_Y_CHART)
 cpusDataArray = []
+
+def initViewModel():
+    updateLastSysDictList()
+    while updateLastSysDict() == False:
+	time.sleep(0.1)
+    for i in rangeCpus:
+	cpusDataArray.append(deque([0] * LEN_Y_CHART,maxlen=LEN_Y_CHART))
+
+    updateRecentCpuDataArray()
+    updateLastSysDictMemory()
+    updateRecentMemoryDataArray()
 
 def updateRecentCpuDataArray():
     updateCpuDataArray(lastSysDict)
 
 def updateCpuDataArray(d):
-    cpuDataArray.append(d.get(CPU))
-    if len(cpuDataArray) > LEN_Y_CHART:
-	cpuDataArray.pop(0)
-    for i in range(lastSysDict[CPUS]):
-	if len(cpusDataArray) < lastSysDict[CPUS]:
-	    cpusDataArray.append([])
-	cpusDataArray[i].append(float(d.get(CPUS_DETAILS)[i]))
-	if len(cpusDataArray[i]) > LEN_Y_CHART:
-	    cpusDataArray[i].pop(0)
+    cpuDataArray.append(d[CPU]/1)
+    for i in rangeCpus:
+	cpusDataArray[i].append(float(d[CPUS_DETAILS][i]))
 
 def updateRecentMemoryDataArray():
     updateMemoryDataArray(lastSysDict)
 
 def updateMemoryDataArray(d):
-    memoryDataArray.append(d.get(USED_MEMORY) / d.get(TOTAL_MEMORY) * 100)
-    if len(memoryDataArray) > LEN_Y_CHART:
-	memoryDataArray.pop(0)
+    memoryDataArray.append(d[USED_MEMORY] / d[TOTAL_MEMORY] * 100)
