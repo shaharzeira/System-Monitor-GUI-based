@@ -30,7 +30,7 @@ lastSysDictList = deque(maxlen=3)
 ALL_STRING_INDEX = 0
 CPU_STRING_INDEX = 0
 CPU_AND_CLOSER_STRING_INDEX = 0
-myInterval =1640.0/20
+myInterval =1640.0
 rangeCpus=[]
 wasInit=False
 
