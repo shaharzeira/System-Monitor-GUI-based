@@ -18,7 +18,7 @@ limitations under the License.
 
 from SysModel import *
 
-LEN_Y_CHART = 80*20+1
+LEN_Y_CHART = 81
 rangeYChart=range(LEN_Y_CHART)
 cpuDataArray = deque([0] * LEN_Y_CHART, maxlen=LEN_Y_CHART)
 memoryDataArray = deque([0] * LEN_Y_CHART,maxlen=LEN_Y_CHART)
