@@ -39,7 +39,7 @@ def updateRecentCpuDataArray():
     updateCpuDataArray(lastSysDict)
 
 def updateCpuDataArray(d):
-    cpuDataArray.append(d[CPU]/1)
+    cpuDataArray.append(d[CPU])
     for i in rangeCpus:
 	cpusDataArray[i].append(float(d[CPUS_DETAILS][i]))
 
