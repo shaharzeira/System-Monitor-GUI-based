@@ -24,21 +24,33 @@ from matplotlib.ticker import MultipleLocator, FormatStrFormatter
 import math
 import threading
 import gobject
-import thread
 import time
+import gc
+
+gobject.threads_init()
+
+gcIndex=0
 
 CopyGuiDataCpu="CopyGuiDataCpu"
 CopyGuiDataMemory="CopyGuiDataMemory"
 ChangeGuiData="ChangeGuiData"
 
+cpusDataArrayCopy=[]
+memoryDataArrayCopy=[]
+
 majorFormatter = FormatStrFormatter('%d')
 minorLocatorY   = MultipleLocator(10)
 
-xRange = range(LEN_Y_CHART)
-GuiCpuDataArray = [0] * LEN_Y_CHART
-GuiMemoryDataArray = [0] * LEN_Y_CHART
 detailsCpusLines = []
 lock = threading.Lock()
+xRange = range(LEN_Y_CHART)
+
+class FuncThread(threading.Thread):
+    def __init__(self, target):
+        self._target = target
+        threading.Thread.__init__(self)
+    def run(self):
+	self._target()
 
 def setLine(place, name):
     ax = plt.subplot(place)
@@ -50,94 +62,85 @@ def setLine(place, name):
     ax.yaxis.set_minor_formatter(majorFormatter)
     return ax
 
-def updateGuiCpuDataArray():
-    global GuiCpuDataArray
-    GuiCpuDataArray[-(len(cpuDataArray)):] = cpuDataArray
-    for i in range(lastSysDict[CPUS]):
-	GuiCpusDetailsDataArray[i][-(len(cpusDataArray[i])):] = cpusDataArray[i]
-
-def updateGuiMemoryDataArray():
-    global GuiMemoryDataArray
-    GuiMemoryDataArray[-(len(memoryDataArray)):] = memoryDataArray
-
-def adjustNoCopy(a):
-    for x in a:
-	x=(6.0/7*x+math.sqrt(max(x,0))*10.0/7)
-
 def changeGuiData(key):
     with lock:
 	if key==CopyGuiDataCpu:
-	    return [GuiCpuDataArray[0:],
-		    [GuiCpusDetailsDataArray[j][0:] for j in range(lastSysDict[CPUS])]]
+	    for i in rangeYChart:
+		cpusDataArrayCopy[0][i]=cpuDataArray[i]
+	    for i in rangeCpus:
+		for j in rangeYChart:
+		    cpusDataArrayCopy[1][i][j]=cpusDataArray[i][j]
 	if key==CopyGuiDataMemory:
-	    return GuiMemoryDataArray[0:]
+	    for i in rangeYChart:
+		memoryDataArrayCopy[i]=memoryDataArray[i]
 	if key==ChangeGuiData:
-	    updateGuiMemoryDataArray()
-	    updateGuiCpuDataArray()
+	    updateRecentMemoryDataArray()
+	    updateRecentCpuDataArray()
 
 # initialization function: plot the background of each frame
 def init():
     line.set_data([], [])
-    for i in range(lastSysDict[CPUS]):
+    for i in rangeCpus:
 	detailsCpusLines[i].set_data([], [])
     return detailsCpusLinesTup
 
 # animation function.  This is called sequentially
 def animate(i):
-    t=changeGuiData(CopyGuiDataCpu)
-    adjustNoCopy(t[0])
-    line.set_data(xRange, t[0])
-    for j in range(lastSysDict[CPUS]):
-	adjustNoCopy(t[1][j])
-	detailsCpusLines[j].set_data(xRange, t[1][j])
+    changeGuiData(CopyGuiDataCpu)
+    line.set_data(xRange, cpusDataArrayCopy[0])
+
+    for j in rangeCpus:
+	detailsCpusLines[j].set_data(xRange, cpusDataArrayCopy[1][j])
     return detailsCpusLinesTup
 
 # initialization function: plot the background of each frame
 def initMemory():
     lineMemory.set_data([], [])
-    return lineMemory,
+    return lineMemoryTup
 
 # animation function.  This is called sequentially
 def animateMemory(i):
-    t=changeGuiData(CopyGuiDataMemory)
-    adjustNoCopy(t)
-    lineMemory.set_data(xRange, t)
-    return lineMemory,
+    changeGuiData(CopyGuiDataMemory)
+    lineMemory.set_data(xRange, memoryDataArrayCopy)
+    return lineMemoryTup
 
 wasThreaded=False
 def updateLineDataGobject():
     global wasThreaded
     if not wasThreaded:
-	thread.start_new_thread(updateLineDataThread,())
+	t1 = FuncThread(updateLineDataThread)
+	t1.daemon=True
+	t1.start()
     time.sleep(myInterval/1000)
     return True
 
 def updateLineDataThread():
     global wasThreaded
+    global gcIndex
     wasThreaded=True
     while True:
-	global lastSysDictList
-	lastSysDictList = lastSysDictList[-3:]
-	thread.start_new_thread(updateLastSysDictList, ())
+	if gcIndex>60*1.7:
+	    gcIndex=0
+	    gc.collect()
+	t1 = FuncThread(updateLastSysDictList)
+	t1.daemon=True
+	t1.start()
 
-	changeGuiData(ChangeGuiData)
 	updateLastSysDictMemory()
-	updateRecentMemoryDataArray()
-
 	updateLastSysDict()
-	updateRecentCpuDataArray()
+	
+	changeGuiData(ChangeGuiData)
 	time.sleep(myInterval/1000/2)
+	gcIndex+=1
 
-updateLastSysDictList()
-while updateLastSysDict() == False:
-    time.sleep(0.1)
-updateRecentCpuDataArray()
-GuiCpusDetailsDataArray = [[]] * lastSysDict[CPUS]
+initViewModel()
+if len(cpusDataArrayCopy)==0:
+    cpusDataArrayCopy.append(list(cpuDataArray))
+    cpusDataArrayCopy.append([list(cpusDataArray[j]) for j in rangeCpus])
 
-for i in range(lastSysDict[CPUS]):
-    GuiCpusDetailsDataArray[i] = [0] * LEN_Y_CHART
-updateLastSysDictMemory()
-updateRecentMemoryDataArray()
+if len(memoryDataArrayCopy)==0:
+    for i in rangeYChart:
+	memoryDataArrayCopy.append(memoryDataArray[i])
 
 # First set up the figure, the axis, and the plot element we want to animate
 fig = plt.figure()
@@ -146,14 +149,15 @@ fig.canvas.set_window_title('System Monitor')
 ax = setLine(211, "Cpu %")
 line, = ax.plot([], [], lw=5)
 
-for i in range(lastSysDict[CPUS]):
+for i in rangeCpus:
     ln, = ax.plot([], [], lw=1)
     detailsCpusLines.append(ln)
 detailsCpusLines.append(line)
 detailsCpusLinesTup=tuple(detailsCpusLines)
 
 axMemory = setLine(212, "Memory % of total [" + str(lastSysDict[TOTAL_MEMORY]) + "]")
-lineMemory, = axMemory.plot([], [], lw=2)
+lineMemory, = axMemory.plot([], [], lw=5)
+lineMemoryTup=tuple([lineMemory])
 
 # call the animator.  blit=True means only re-draw the parts that have changed.
 # Animate Memory usage
@@ -163,6 +167,5 @@ animMemory = animation.FuncAnimation(fig, animateMemory, init_func=initMemory,
 # Animate Cpu usage
 anim = animation.FuncAnimation(fig, animate, init_func=init,
                                frames=40, interval=myInterval, blit=True)
-
 gobject.idle_add(updateLineDataGobject)
 plt.show()
